@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>remos@portfolio:~$</title>
+<style>
+  :root{
+    --bg:#0a1216;
+    --bg2:#101c22;
+    --line:#1e3540;
+    --green:#2fe0ff;
+    --green-dim:#1a7a91;
+    --amber:#b98cff;
+    --fg:#d9f4fb;
+    --fg-dim:#6f97a3;
+    --mono:'JetBrains Mono','Fira Code','Courier New',monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important;}
+  }
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font-family:var(--mono);
+    font-size:15px;
+    line-height:1.7;
+    overflow-x:hidden;
+  }
+  a{color:var(--green);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  ::selection{background:var(--green);color:#000;}
+  :focus-visible{outline:2px solid var(--green); outline-offset:2px;}
+
+  /* CRT scanline + vignette overlay */
+  body::before{
+    content:"";
+    position:fixed; inset:0; z-index:200; pointer-events:none;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(47,224,255,0.02) 3px,
+      rgba(0,0,0,0) 4px
+    );
+  }
+  body::after{
+    content:"";
+    position:fixed; inset:0; z-index:199; pointer-events:none;
+    box-shadow: inset 0 0 140px rgba(0,0,0,0.5);
+  }
+
+  /* rotating wireframe globe, ambient, behind all content */
+  #globe{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+  }
+
+  .wrap{ max-width:960px; margin:0 auto; padding:0 28px; position:relative; z-index:1; }
+
+  /* ── NAV ─────────────────────────── */
+  nav{
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    background:rgba(8,10,8,0.9);
+    border-bottom:1px solid var(--line);
+    backdrop-filter:blur(6px);
+  }
+  .nav-inner{
+    max-width:960px; margin:0 auto; padding:14px 28px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .nav-logo{ color:var(--green); font-weight:700; font-size:14px; }
+  .nav-logo .cursor{ animation:blink 1s step-end infinite; }
+  .nav-links{ display:flex; gap:26px; font-size:13px; color:var(--fg-dim); }
+  .nav-links a::before{ content:"./"; color:var(--green-dim); }
+  .nav-links a:hover{ color:var(--green); }
+  .nav-cta{
+    border:1px solid var(--green-dim); color:var(--green);
+    padding:7px 14px; font-size:12px;
+  }
+  .nav-cta:hover{ background:var(--green); color:#000; text-decoration:none; }
+  @media (max-width:800px){ .nav-links{display:none;} }
+
+  /* ── TERMINAL WINDOW CHROME ─────────── */
+  .term{
+    background:var(--bg2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+    box-shadow:0 0 0 1px rgba(47,224,255,0.06), 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .term-bar{
+    display:flex; align-items:center; gap:8px;
+    padding:10px 14px;
+    background:#0a0f0a;
+    border-bottom:1px solid var(--line);
+  }
+  .term-dot{ width:10px; height:10px; border-radius:50%; }
+  .term-dot.r{ background:#ff5f56; }
+  .term-dot.y{ background:#ffbd2e; }
+  .term-dot.g{ background:#27c93f; }
+  .term-title{ margin-left:10px; font-size:12px; color:var(--fg-dim); }
+  .term-body{ padding:26px 28px; }
+
+  /* ── HERO ─────────────────────────── */
+  #hero{ min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding:110px 0 60px; }
+  .prompt-line{ color:var(--fg-dim); font-size:13px; margin-bottom:4px; }
+  .prompt-line .path{ color:var(--green); }
+  #boot{ white-space:pre-wrap; font-size:13px; color:var(--fg-dim); margin-bottom:22px; min-height:96px; }
+  #boot .ok{ color:var(--green); }
+  h1{
+    font-size:clamp(1.8rem,4.4vw,3.1rem);
+    color:var(--fg);
+    font-weight:700;
+    line-height:1.25;
+    margin-bottom:6px;
+  }
+  h1 .accent{ color:var(--green); }
+  .role-line{ color:var(--fg-dim); font-size:15px; margin-bottom:20px; }
+  .role-line .accent{ color:var(--amber); }
+  #typed-desc{ color:var(--fg); font-size:15px; max-width:600px; margin-bottom:30px; min-height:44px; }
+  .cursor{ display:inline-block; width:8px; background:var(--green); animation:blink 1s step-end infinite; }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  .hero-actions{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:34px; }
+  .btn{
+    font-family:var(--mono); font-size:13px; padding:11px 20px;
+    border:1px solid var(--green-dim); color:var(--green); background:transparent;
+    cursor:pointer;
+  }
+  .btn::before{ content:"$ "; color:var(--fg-dim); }
+  .btn:hover{ background:var(--green); color:#000; text-decoration:none; }
+  .btn.primary{ background:var(--green); color:#000; }
+  .btn.primary::before{ content:"$ "; color:rgba(0,0,0,0.5); }
+  .btn.primary:hover{ background:transparent; color:var(--green); }
+
+  .stat-row{ display:flex; gap:32px; flex-wrap:wrap; }
+  .stat{ border-left:2px solid var(--green-dim); padding-left:12px; }
+  .stat strong{ display:block; color:var(--green); font-size:1.4rem; }
+  .stat span{ color:var(--fg-dim); font-size:11px; text-transform:uppercase; letter-spacing:0.08em; }
+
+  /* ── SECTION SHARED ─────────────────── */
+  section{ padding:70px 0; }
+  .sec-head{ margin-bottom:34px; }
+  .sec-cmd{ color:var(--fg-dim); font-size:13px; margin-bottom:8px; }
+  .sec-cmd .path{ color:var(--green); }
+  .sec-cmd .file{ color:var(--amber); }
+  .sec-title{ font-size:clamp(1.4rem,2.6vw,2rem); color:var(--fg); font-weight:700; }
+  .sec-title::before{ content:"# "; color:var(--green-dim); }
+
+  /* ── SKILLS TICKER ─────────────────── */
+  #ticker{
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    background:var(--bg2); padding:14px 0; overflow:hidden; white-space:nowrap;
+    position:relative; z-index:1;
+  }
+  .ticker-track{ display:inline-flex; animation:scroll 32s linear infinite; }
+  .ticker-track span{ padding:0 28px; font-size:13px; color:var(--green-dim); }
+  .ticker-track span.sep{ color:var(--fg-dim); padding:0 6px; }
+  @keyframes scroll{ from{transform:translateX(0);} to{transform:translateX(-50%);} }
+
+  /* ── TOOLKIT GRID ─────────────────── */
+  .tool-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+    gap:14px;
+  }
+  .tool-card{
+    border:1px solid var(--line);
+    background:var(--bg2);
+    padding:16px 18px;
+  }
+  .tool-name{ color:var(--green); font-size:14px; font-weight:700; margin-bottom:4px; }
+  .tool-name::before{ content:"» "; color:var(--fg-dim); }
+  .tool-use{ color:var(--fg-dim); font-size:12px; }
+
+  /* ── PROJECTS AS LOG ENTRIES ─────────── */
+  .log-entry{
+    border:1px solid var(--line);
+    border-left:2px solid var(--green-dim);
+    padding:20px 22px;
+    margin-bottom:16px;
+    background:var(--bg2);
+    transition:border-color 0.2s, transform 0.2s;
+  }
+  .log-entry:hover{ border-left-color:var(--green); transform:translateX(4px); }
+  .log-meta{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .log-tag{ font-size:11px; color:var(--amber); border:1px solid #4a3a1f; padding:2px 8px; }
+  .log-date{ font-size:11px; color:var(--fg-dim); }
+  .log-title{ color:var(--green); font-size:16px; font-weight:700; margin-bottom:8px; }
+  .log-title::before{ content:"> "; color:var(--fg-dim); }
+  .log-body{ color:var(--fg); font-size:13.5px; }
+  .log-body .k{ color:var(--fg-dim); }
+
+  /* ── ABOUT ─────────────────────────── */
+  .about-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:36px; }
+  @media (max-width:800px){ .about-grid{ grid-template-columns:1fr; } }
+  .about-copy p{ color:var(--fg); margin-bottom:14px; font-size:14.5px; }
+  .about-copy .k{ color:var(--green); }
+  .skill-tree{ font-size:13px; color:var(--fg-dim); }
+  .skill-tree .branch{ color:var(--green-dim); }
+  .skill-tree .cat{ color:var(--amber); }
+  .skill-tree div{ margin-bottom:6px; }
+
+  /* ── TESTIMONIALS AS LOGS ─────────── */
+  .testi{ border:1px dashed var(--line); padding:18px 20px; margin-bottom:14px; color:var(--fg-dim); font-size:13px; }
+  .testi .who{ color:var(--green-dim); margin-top:10px; font-size:12px; }
+
+  /* ── CONTACT ─────────────────────────── */
+  #contact .term-body{ text-align:left; }
+  .contact-row{ display:flex; gap:14px; flex-wrap:wrap; margin-top:22px; }
+
+  /* ── FOOTER ─────────────────────────── */
+  footer{
+    border-top:1px solid var(--line);
+    padding:26px 0; color:var(--fg-dim); font-size:12px;
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
+    position:relative; z-index:1;
+  }
+  footer a{ color:var(--fg-dim); margin-left:16px; }
+  footer a:hover{ color:var(--green); }
+</style>
+</head>
+<body>
+
+<canvas id="globe"></canvas>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">remos<span class="accent">@</span>portfolio<span class="cursor">_</span></div>
+    <div class="nav-links">
+      <a href="#toolkit">toolkit</a>
+      <a href="#projects">projects</a>
+      <a href="#about">about</a>
+      <a href="#testimonials">refs</a>
+      <a href="#contact">contact</a>
+    </div>
+    <a href="mailto:remo9694@gmail.com" class="nav-cta">ssh contact</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- ── HERO ─────────────────────────── -->
+  <section id="hero">
+    <div class="term">
+      <div class="term-bar">
+        <span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span>
+        <span class="term-title">remos@coimbatore: ~/portfolio</span>
+      </div>
+      <div class="term-body">
+        <div class="prompt-line"><span class="path">remos@coimbatore</span>:~$ whoami</div>
+        <div id="boot"></div>
+
+        <h1>REMOS A <span class="accent">/</span> access granted</h1>
+        <div class="role-line">
+          <span class="accent">role:</span> Sr. Cloud Solutions Architect · AI &amp; Automation Strategist · Ex-KGiS
+        </div>
+        <div id="typed-desc"></div>
+
+        <div class="hero-actions">
+          <a href="#projects" class="btn primary">./view_projects</a>
+          <a href="Remos_A_Resume.docx" class="btn" download>./download resume.docx</a>
+          <a href="#contact" class="btn">./contact --init</a>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat"><strong>8+</strong><span>years experience</span></div>
+          <div class="stat"><strong>6</strong><span>orgs delivered for</span></div>
+          <div class="stat"><strong>1</strong><span>tour of duty @ KGiS</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ── SKILLS TICKER ─────────────────── -->
+<div id="ticker">
+  <div class="ticker-track">
+    <span>Azure</span><span class="sep">//</span>
+    <span>Salesforce</span><span class="sep">//</span>
+    <span>Microsoft 365</span><span class="sep">//</span>
+    <span>Docker</span><span class="sep">//</span>
+    <span>GitHub</span><span class="sep">//</span>
+    <span>Odoo</span><span class="sep">//</span>
+    <span>AI &amp; Automation</span><span class="sep">//</span>
+    <span>Business Development</span><span class="sep">//</span>
+    <span>RCM Pre-Sales</span><span class="sep">//</span>
+    <span>Project Management</span><span class="sep">//</span>
+    <span>HR Operations</span><span class="sep">//</span>
+    <span>Workday</span><span class="sep">//</span>
+    <span>SEO &amp; Performance Marketing</span><span class="sep">//</span>
+    <span>Stakeholder Mgmt</span><span class="sep">//</span>
+    <!-- dup -->
+    <span>Azure</span><span class="sep">//</span>
+    <span>Salesforce</span><span class="sep">//</span>
+    <span>Microsoft 365</span><span class="sep">//</span>
+    <span>Docker</span><span class="sep">//</span>
+    <span>GitHub</span><span class="sep">//</span>
+    <span>Odoo</span><span class="sep">//</span>
+    <span>AI &amp; Automation</span><span class="sep">//</span>
+    <span>Business Development</span><span class="sep">//</span>
+    <span>RCM Pre-Sales</span><span class="sep">//</span>
+    <span>Project Management</span><span class="sep">//</span>
+    <span>HR Operations</span><span class="sep">//</span>
+    <span>Workday</span><span class="sep">//</span>
+    <span>SEO &amp; Performance Marketing</span><span class="sep">//</span>
+    <span>Stakeholder Mgmt</span><span class="sep">//</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ── TOOLKIT ─────────────────── -->
+  <section id="toolkit">
+    <div class="sec-head">
+      <div class="sec-cmd"><span class="path">remos@coimbatore</span>:~$ ls -la <span class="file">tools/</span></div>
+      <div class="sec-title">toolkit — what I actually work in</div>
+    </div>
+    <div class="tool-grid">
+      <div class="tool-card"><div class="tool-name">Microsoft Azure</div><div class="tool-use">Cloud administration & infrastructure security</div></div>
+      <div class="tool-card"><div class="tool-name">Salesforce</div><div class="tool-use">CRM, client & deal pipeline management</div></div>
+      <div class="tool-card"><div class="tool-name">Microsoft 365</div><div class="tool-use">Collaboration & business productivity suite</div></div>
+      <div class="tool-card"><div class="tool-name">Docker</div><div class="tool-use">Containerized app deployment</div></div>
+      <div class="tool-card"><div class="tool-name">GitHub</div><div class="tool-use">Version control & release management</div></div>
+      <div class="tool-card"><div class="tool-name">Odoo</div><div class="tool-use">Business process & ERP management</div></div>
+      <div class="tool-card"><div class="tool-name">Workday</div><div class="tool-use">HR reporting, onboarding & offboarding</div></div>
+      <div class="tool-card"><div class="tool-name">Power BI / Dashboards</div><div class="tool-use">KPI & TAT leadership reporting</div></div>
+      <div class="tool-card"><div class="tool-name">SEO & Ad Platforms</div><div class="tool-use">Performance marketing & visibility</div></div>
+      <div class="tool-card"><div class="tool-name">AI / Automation Tools</div><div class="tool-use">Workflow automation & AI-driven strategy</div></div>
+      <div class="tool-card"><div class="tool-name">MS Office Suite</div><div class="tool-use">Reporting, documentation, presentations</div></div>
+      <div class="tool-card"><div class="tool-name">RCM Platforms</div><div class="tool-use">Revenue cycle pre-sales & closure analysis</div></div>
+    </div>
+  </section>
+
+  <!-- ── PROJECTS / EXPERIENCE LOG ─────────── -->
+  <section id="projects">
+    <div class="sec-head">
+      <div class="sec-cmd"><span class="path">remos@coimbatore</span>:~$ cat <span class="file">experience.log</span></div>
+      <div class="sec-title">work_history</div>
+    </div>
+
+    <div class="log-entry">
+      <div class="log-meta">
+        <span class="log-tag">CLOUD // AI</span>
+        <span class="log-date">Sep 2024 — present</span>
+      </div>
+      <div class="log-title">Sr. Cloud Solutions Architect, AI Engineer &amp; Automation Strategist — RND OptimizAR</div>
+      <div class="log-body">
+        <span class="k">stack:</span> Azure, Salesforce, Microsoft 365, Odoo, Docker, GitHub<br>
+        <span class="k">summary:</span> designing and running secure, high-performing cloud infrastructure for global clients; owns operational resilience, scalability, and data integrity, plus AI/automation strategy and performance marketing.
+      </div>
+    </div>
+
+    <div class="log-entry">
+      <div class="log-meta">
+        <span class="log-tag">SALES // RCM</span>
+        <span class="log-date">Apr 2023 — Jul 2024</span>
+      </div>
+      <div class="log-title">Outsourcing Specialist — Integra Global Solutions Corp</div>
+      <div class="log-body">
+        <span class="k">summary:</span> led sales dept through strategic reorg — cut overhead, raised compensation ROI, retained top talent. Owned RCM pre-sales through deal close and built a growing account pipeline.
+      </div>
+    </div>
+
+    <div class="log-entry">
+      <div class="log-meta">
+        <span class="log-tag">HR OPS // PM</span>
+        <span class="log-date">Jan 2022 — Apr 2023</span>
+      </div>
+      <div class="log-title">Project Mgmt, Business Development Exec &amp; Recruiter — KG Invicta Services (KGiS)</div>
+      <div class="log-body">
+        <span class="k">summary:</span> led HR operations transition for Europe; ran onboarding/offboarding reporting in Workday, KPI/TAT dashboards, and leadership reviews. Partnered with Talent Acquisition on hiring strategy.
+      </div>
+    </div>
+
+    <div class="log-entry">
+      <div class="log-meta">
+        <span class="log-tag">PROGRAM MGMT</span>
+        <span class="log-date">Aug 2019 — Oct 2020</span>
+      </div>
+      <div class="log-title">Project Mgmt (BD Mentor) — Borussia Dortmund Grassroots Programs</div>
+      <div class="log-body">
+        <span class="k">summary:</span> directed youth development programs for World1Sports Chennai, ages 3–15, across multiple sites — plus HR initiatives spanning engagement, L&amp;D, and performance management.
+      </div>
+    </div>
+
+    <div class="log-entry">
+      <div class="log-meta">
+        <span class="log-tag">PRESALES</span>
+        <span class="log-date">Jul 2018 — Jun 2019</span>
+      </div>
+      <div class="log-title">Assistant Project Manager — Apex CoVantage</div>
+      <div class="log-body">
+        <span class="k">summary:</span> supported presales and PM — RFI/RFP responses, value proposition docs, competitive analysis, and business intelligence for global market development.
+      </div>
+    </div>
+
+    <div class="log-entry">
+      <div class="log-meta">
+        <span class="log-tag">OPS</span>
+        <span class="log-date">Jan 2017 — Jan 2018</span>
+      </div>
+      <div class="log-title">Senior Customer Executive — Aegis</div>
+      <div class="log-body">
+        <span class="k">summary:</span> verified and analyzed lead potential from large databases via outbound calling; delivered quality-checked contact data for digital marketing.
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ABOUT ─────────────────────────── -->
+  <section id="about">
+    <div class="sec-head">
+      <div class="sec-cmd"><span class="path">remos@coimbatore</span>:~$ cat <span class="file">about.md</span></div>
+      <div class="sec-title">profile</div>
+    </div>
+    <div class="about-grid">
+      <div class="about-copy">
+        <p><span class="k">$</span> 8+ years across Cloud &amp; AI Solutions Architecture, Business Development, Project Management, and HR Operations. Not a generalist by accident — each domain feeds the next: HR ops taught process discipline, sales taught how to read a client, cloud architecture taught how to build things that don't fall over.</p>
+        <p><span class="k">$</span> Includes a tour of duty <span class="k">inside</span> KG Invicta Services (KGiS) — 2022–2023, leading HR operations transitions and business development from within. First-hand knowledge of how KGiS actually runs.</p>
+        <p><span class="k">$</span> Based in Coimbatore, Tamil Nadu. Open to full-time roles, contracts, and consulting engagements.</p>
+      </div>
+      <div class="skill-tree">
+        <div><span class="branch">├──</span> <span class="cat">cloud/</span></div>
+        <div><span class="branch">│   ├──</span> Azure Administration &amp; Security</div>
+        <div><span class="branch">│   └──</span> Docker, GitHub, Odoo</div>
+        <div><span class="branch">├──</span> <span class="cat">business/</span></div>
+        <div><span class="branch">│   ├──</span> Client Relationship Management</div>
+        <div><span class="branch">│   └──</span> RCM Pre-Sales &amp; Deal Pipeline</div>
+        <div><span class="branch">├──</span> <span class="cat">people_ops/</span></div>
+        <div><span class="branch">│   ├──</span> Talent Acquisition, Workday</div>
+        <div><span class="branch">│   └──</span> KPI/TAT Reporting</div>
+        <div><span class="branch">└──</span> <span class="cat">growth/</span></div>
+        <div><span class="branch">    ├──</span> SEO &amp; Performance Marketing</div>
+        <div><span class="branch">    └──</span> AI &amp; Automation Strategy</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TESTIMONIALS ─────────────────── -->
+  <section id="testimonials">
+    <div class="sec-head">
+      <div class="sec-cmd"><span class="path">remos@coimbatore</span>:~$ tail -f <span class="file">refs.log</span></div>
+      <div class="sec-title">references</div>
+    </div>
+    <!-- Placeholders — swap in real quotes when available -->
+    <div class="testi">
+      [ PENDING ] add a real reference from a manager or client re: cloud/AI delivery.
+      <div class="who">— name, title @ company</div>
+    </div>
+    <div class="testi">
+      [ PENDING ] add a real reference re: business development / RCM pre-sales work.
+      <div class="who">— name, title @ company</div>
+    </div>
+    <div class="testi">
+      [ PENDING ] add a real reference re: HR ops / project management at KGiS or elsewhere.
+      <div class="who">— name, title @ company</div>
+    </div>
+  </section>
+
+  <!-- ── CONTACT ─────────────────────────── -->
+  <section id="contact">
+    <div class="term">
+      <div class="term-bar">
+        <span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span>
+        <span class="term-title">remos@coimbatore: ~/contact</span>
+      </div>
+      <div class="term-body">
+        <div class="prompt-line"><span class="path">remos@coimbatore</span>:~$ ./contact --init</div>
+        <div class="sec-title" style="margin:14px 0 6px;">let's_work_together</div>
+        <p style="color:var(--fg-dim); font-size:13.5px;">open to full-time roles, contracts, and consulting engagements. based in Coimbatore, Tamil Nadu.</p>
+        <div class="contact-row">
+          <a href="mailto:remo9694@gmail.com" class="btn primary">mailto:remo9694@gmail.com</a>
+          <a href="tel:+918072519895" class="btn">tel:+91-80725-19895</a>
+          <a href="https://www.linkedin.com/in/remos-a-a93981155/" target="_blank" class="btn">linkedin --open</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; width:100%;">
+    <div>© 2026 remos_a — all rights reserved</div>
+    <div>
+      <a href="#projects">projects</a>
+      <a href="#about">about</a>
+      <a href="#contact">contact</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Boot sequence typing
+  const bootLines = [
+    "loading profile ...",
+    "name       : Remos A",
+    "location   : Coimbatore, Tamil Nadu, IN",
+    "role       : Cloud & AI Solutions Architect",
+    "prev_org   : KG Invicta Services (KGiS)",
+    "status     : [OK] open to work"
+  ];
+  const bootEl = document.getElementById('boot');
+  const descEl = document.getElementById('typed-desc');
+  const descText = "I architect secure cloud & AI systems, build revenue pipelines, and run HR & project ops that actually ship on time.";
+
+  function typeLines(el, lines, lineDelay, cb){
+    let li = 0;
+    function nextLine(){
+      if(li >= lines.length){ el.innerHTML += '<span class="cursor">&nbsp;</span>'; if(cb) cb(); return; }
+      let line = lines[li];
+      if(line.startsWith('status')){ line = line.replace('[OK]', '<span class="ok">[OK]</span>'); }
+      let ci = 0;
+      const raw = lines[li];
+      function typeChar(){
+        if(ci <= raw.length){
+          let shown = raw.slice(0, ci);
+          if(shown.includes('[OK]')) shown = shown.replace('[OK]', '<span class="ok">[OK]</span>');
+          el.innerHTML = lines.slice(0, li).map(l => l.replace('[OK]','<span class="ok">[OK]</span>')).concat(shown).join('\n');
+          ci++;
+          setTimeout(typeChar, 12);
+        } else {
+          li++;
+          setTimeout(nextLine, 90);
+        }
+      }
+      typeChar();
+    }
+    nextLine();
+  }
+
+  function typeText(el, text, speed, cb){
+    let i = 0;
+    el.innerHTML = '';
+    function step(){
+      if(i <= text.length){
+        el.innerHTML = text.slice(0, i) + '<span class="cursor">&nbsp;</span>';
+        i++;
+        setTimeout(step, speed);
+      } else if(cb){ cb(); }
+    }
+    step();
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    typeLines(bootEl, bootLines, 90, () => {
+      setTimeout(() => typeText(descEl, descText, 18), 200);
+    });
+  });
+
+  // Rotating wireframe globe, ambient, fixed behind all content
+  const canvas = document.getElementById('globe');
+  const ctx = canvas.getContext('2d');
+  let w, h, cx, cy, radius;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function resize(){
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    cx = w / 2;
+    cy = h * 0.42;
+    radius = Math.min(w, h) * 0.34;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Build lat/long wireframe points on a unit sphere
+  const LAT_STEPS = 14;
+  const LON_STEPS = 22;
+  const RES = 48;
+
+  const latLines = [];
+  for(let i = 1; i < LAT_STEPS; i++){
+    const lat = Math.PI * (i / LAT_STEPS - 0.5);
+    const pts = [];
+    for(let j = 0; j <= RES; j++){
+      const lon = (j / RES) * Math.PI * 2;
+      pts.push([
+        Math.cos(lat) * Math.cos(lon),
+        Math.sin(lat),
+        Math.cos(lat) * Math.sin(lon)
+      ]);
+    }
+    latLines.push(pts);
+  }
+  const lonLines = [];
+  for(let i = 0; i < LON_STEPS; i++){
+    const lon = (i / LON_STEPS) * Math.PI * 2;
+    const pts = [];
+    for(let j = 0; j <= RES; j++){
+      const lat = Math.PI * (j / RES - 0.5);
+      pts.push([
+        Math.cos(lat) * Math.cos(lon),
+        Math.sin(lat),
+        Math.cos(lat) * Math.sin(lon)
+      ]);
+    }
+    lonLines.push(pts);
+  }
+
+  let angle = 0;
+
+  function project(p){
+    const cosA = Math.cos(angle), sinA = Math.sin(angle);
+    const x = p[0] * cosA - p[2] * sinA;
+    const z = p[0] * sinA + p[2] * cosA;
+    const y = p[1];
+    const tilt = 0.28;
+    const cosT = Math.cos(tilt), sinT = Math.sin(tilt);
+    const y2 = y * cosT - z * sinT;
+    const z2 = y * sinT + z * cosT;
+    const scale = 1.7 / (1.7 - z2);
+    return {
+      sx: cx + x * radius * scale,
+      sy: cy + y2 * radius * scale,
+      z: z2
+    };
+  }
+
+  function drawLine(pts){
+    ctx.beginPath();
+    let started = false;
+    let lastZ = 0;
+    for(const p of pts){
+      const proj = project(p);
+      if(!started){ ctx.moveTo(proj.sx, proj.sy); started = true; }
+      else { ctx.lineTo(proj.sx, proj.sy); }
+      lastZ = proj.z;
+    }
+    ctx.strokeStyle = 'rgba(47,224,255,' + (lastZ > 0.05 ? 0.34 : 0.09) + ')';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  function drawGlobe(){
+    ctx.clearRect(0, 0, w, h);
+
+    const grad = ctx.createRadialGradient(cx, cy, radius*0.7, cx, cy, radius*1.15);
+    grad.addColorStop(0, 'rgba(47,224,255,0.06)');
+    grad.addColorStop(1, 'rgba(47,224,255,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius*1.15, 0, Math.PI*2);
+    ctx.fill();
+
+    for(const line of latLines) drawLine(line);
+    for(const line of lonLines) drawLine(line);
+
+    if(!reduced) angle += 0.0022;
+  }
+
+  function loop(){
+    drawGlobe();
+    requestAnimationFrame(loop);
+  }
+  if(!reduced){ loop(); } else { drawGlobe(); }
+</script>
+
+</body>
+</html>
